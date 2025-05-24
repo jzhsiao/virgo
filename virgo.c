@@ -37,6 +37,7 @@ typedef struct {
 typedef struct {
 	unsigned current;
 	unsigned handle_hotkeys;
+    unsigned previous;
 	Windows desktops[NUM_DESKTOPS];
 	HWND focused[NUM_DESKTOPS];
 	Trayicon trayicon;
@@ -257,6 +258,9 @@ static void virgo_init(Virgo *v)
 					'Q');
 	register_hotkey(i * 2 + 1, MOD_ALT | MOD_CONTROL | MOD_SHIFT | MOD_NOREPEAT,
 					'S');
+
+    register_hotkey(i*2+2, MOD_ALT | MOD_NOREPEAT, VK_BACK);
+
 	trayicon_init(&v->trayicon);
 }
 
@@ -291,6 +295,9 @@ static void virgo_go_to_desk(Virgo *v, unsigned desk)
 	if (v->current == desk) {
 		return;
 	}
+
+    v->previous = v->current;
+
 	virgo_update(v);
 	v->focused[v->current] = GetForegroundWindow();
 	windows_hide(&v->desktops[v->current]);
@@ -299,6 +306,12 @@ static void virgo_go_to_desk(Virgo *v, unsigned desk)
 	v->current = desk;
 	trayicon_set(&v->trayicon, v->current + 1);
 }
+
+static void virgo_go_to_previous_desk(Virgo *v) {
+    virgo_go_to_desk(v, v->previous);
+}
+
+
 
 void __main(void) __asm__("__main");
 void __main(void)
@@ -315,7 +328,9 @@ void __main(void)
 		}
 		if (msg.wParam == NUM_DESKTOPS * 2 + 1) {
 			virgo_toggle_hotkeys(&v);
-		} else if (msg.wParam % 2 == 0) {
+		} else if (msg.wParam == NUM_DESKTOPS * 2 + 2){
+            virgo_go_to_previous_desk(&v);
+        } else if (msg.wParam % 2 == 0) {
 			virgo_go_to_desk(&v, msg.wParam / 2);
 		} else {
 			virgo_move_to_desk(&v, (msg.wParam - 1) / 2);
